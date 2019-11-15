@@ -1,0 +1,544 @@
+<template>
+  <!--任务体系 -->
+  <div class="mission">
+    <div style="position: relative">
+        <span
+          style="vertical-align: top;display: inline-block;line-height: 35px;padding:10px;cursor: pointer" title="全部任务体系"
+          @click="mission_all">任务体系</span>
+      <el-button type="primary" @click="dialogVisible = true;flush();add_title()" size="mini"
+                 style="margin-top: 14px;width: 80px;">
+        新增
+        <!--<img src="../../../../src/assets/images/internal-store-control/add.png" alt="" >-->
+      </el-button>
+      <div style="position: absolute;top: 18px;left: 200px">
+        <el-checkbox v-model="is_groups" @change="screen">集团码</el-checkbox>
+        <el-checkbox v-model="is_syss" @change="screen_sys">系统码</el-checkbox>
+        <el-checkbox v-model="is_halts" @change="screen_halt">停用</el-checkbox>
+      </div>
+
+    </div>
+    <!--账户种类 状态 ... -->
+    <div class="status">
+      <el-table
+        :data="mission_list"
+        size="mini"
+        max-height="700"
+        :cell-style="{textAlign:'center'}"
+        :header-cell-style="{background:'#68819EFF',color:'white',textAlign:'center'}"
+        style="width: 100%;">
+        <el-table-column
+          prop="descript"
+          label="中文描述">
+        </el-table-column>
+        <el-table-column
+          prop="descript_en"
+          label="英文描述">
+        </el-table-column>
+        <el-table-column
+          prop="code"
+          label="业务代码">
+        </el-table-column>
+        <el-table-column
+          prop="is_sys"
+          label="系统码">
+          <template slot-scope="scope">
+            <span v-if="scope.row.is_sys === 0">否</span>
+            <span v-else>是</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="is_group "
+          label="集团码">
+          <template slot-scope="scope">
+            <span v-if="scope.row.is_group === 0">否</span>
+            <span v-else>是</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="is_halt "
+          label="停用">
+          <template slot-scope="scope">
+            <span v-if="scope.row.is_halt === 0">否</span>
+            <span v-else>是</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="create_user"
+          label="创建者">
+        </el-table-column>
+        <el-table-column
+          prop="create_datetime"
+          width="150"
+          label="创建时间">
+        </el-table-column>
+        <el-table-column
+          prop="modify_datetime"
+          width="150"
+          label="修改时间">
+        </el-table-column>
+        <el-table-column
+          prop="modify_user"
+          label="修改用户">
+        </el-table-column>
+
+        <el-table-column
+          prop="address"
+          width="180 "
+          fixed="right"
+          label="操作">
+          <template slot-scope="scope">
+            <el-button size="mini" type="danger" @click="cancel(scope.row.id,scope.$index, mission_list)"
+                       v-if="scope.row.is_sys === 1" disabled>删除
+            </el-button>
+            <el-button size="mini" type="danger" @click="cancel(scope.row.id,scope.$index, mission_list)" v-else>删除
+            </el-button>
+            <el-button size="mini"
+                       @click="dialogVisible = true;amend(scope.row,scope.row.id,scope.$index, mission_list) "
+                       v-if="scope.row.is_sys === 1" disabled>修改
+            </el-button>
+            <el-button size="mini"
+                       @click="dialogVisible = true;amend(scope.row,scope.row.id,scope.$index, mission_list) " v-else>修改
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <!--分页-->
+      <el-pagination style="float: right;margin-right: 2%"
+                     layout="prev, pager, next"
+                     :page-size="pagesize"
+                     @current-change="handleCurrentChange"
+                     :total="total">
+      </el-pagination>
+    </div>
+    <!--点击新增修改显示的页面-->
+    <el-dialog
+      :visible.sync="dialogVisible"
+      :close-on-click-modal='false'
+      width="30%"
+      :before-close="handleClose">
+      <div slot="title" class="dialog_style_header-title">
+        <span class="dialog_style_title-name">{{ title }}</span>
+      </div>
+      <ul class="dialog_style">
+        <li>
+          <i style="color: red;font-size: 18px">*</i>
+          <span>中文描述 ：</span>
+          <el-input v-model="param.desc" placeholder="请输入中文描述" style="width: 200px;" size="mini"></el-input>
+        </li>
+        <li>
+          <i style="color: red;font-size: 18px">*</i>
+          <span>英文描述 ：</span>
+          <el-input v-model="param.desc_en" placeholder="请输入英文描述" style="width: 200px;" size="mini"></el-input>
+        </li>
+        <li>
+          <i style="color: red;font-size: 18px">*</i>
+          <span>业务代码 ：</span>
+          <el-input v-model="param.code" placeholder="请输入业务代码" style="width: 200px;" size="mini"></el-input>
+        </li>
+        <li>
+        <i style="color: red;font-size: 18px">*</i>
+        <span>地址 ：</span>
+        <el-input v-model="param.code_category" placeholder="请输入业务名称" style="width: 200px;" size="mini"></el-input>
+        </li>
+        <li>
+          <i style="color: red;font-size: 18px">*</i>
+          <span>系统码 ：</span>
+          <el-radio v-model="is_sys" label="1">是</el-radio>
+          <el-radio v-model="is_sys" label="0">否</el-radio>
+        </li>
+        <li>
+          <i style="color: red;font-size: 18px">*</i>
+          <span>集团码 ：</span>
+          <el-radio v-model="is_group" label="1">是</el-radio>
+          <el-radio v-model="is_group" label="0">否</el-radio>
+        </li>
+        <li>
+          <i style="color: red;font-size: 18px">*</i>
+          <span>停用 ：</span>
+          <el-radio v-model="is_halt" label="1">是</el-radio>
+          <el-radio v-model="is_halt" label="0">否</el-radio>
+
+        </li>
+      </ul>
+      <span slot="footer" class="dialog-footer">
+              <el-button @click="dialogVisible = false" size="mini">取 消</el-button>
+              <el-button type="primary" @click="ensure()" size="mini">确 定</el-button>
+             </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+    export default {
+        name: "mission",
+        data() {
+          return {
+            url: this.api.api_code_9103,
+            title: "",
+            //分页
+            total: 10,
+            pagesize: 10,
+            dialogVisible: false,//修改页面的显示和隐藏
+            //收支
+            mission_list: [],//任务体系列表
+            id: "",//选中修改项的id
+            Edite: true, //标志位 判断的是新增还是更新
+            param: {},//新增任务体系里的内容
+            //筛选条件
+            is_syss: false,//是否系统码
+            is_groups: false,//是否集团码
+            is_halts: false,//是否停用
+            //  任务体系的内容
+            desc: '',//中文描述
+            desc_en: '',//英文描述
+            code: '',//代码
+            code_category:'',//地址
+            is_sys: '',//是否系统码
+            is_group: '',//是否集团码
+            is_halt: '',//是否停用
+          }
+        },
+        created: function () {
+          let that = this;
+          that.enter_code();//获取付款原因
+
+        },
+        methods: {
+          //封装错误信息
+          error_message(msg) {
+            this.$message.error('错了哦，错误消息为' + msg);
+          },
+          /**
+           * @flush 是用来刷新数据的
+           * */
+          flush() {
+            let that = this;
+            //第一件事    将标志位改为false
+            that.Edite = false;
+            that.param = {
+              desc: '',//中文描述
+              desc_en: '',//英文描述
+              code: '',//代码
+              code_category:'',//地址
+            };
+            that.is_sys = '1';//是否系统码
+              that.is_group = "1";//是否集团码
+              that.is_halt = '0';//是否停用
+          },
+          //封装获取任务体系
+          enter_code() {
+            let that = this;
+            that.$axios({
+              url: that.url + "/v1/system/settings/get_code_base_list/?parent_code=mission",
+              method: "get",
+            })
+              .then(res => {
+                if (res.data.message === "success") {
+                  console.log(res.data.data)
+                  that.mission_list = res.data.data.results;
+                  that.total = res.data.data.count;
+                }
+                else {
+                  that.error_message(res.data.message)
+                }
+
+              })
+              .catch(error => {
+                console.log(error);
+              });
+          },
+          //全部任务体系
+          mission_all(){
+            let that =this;
+            that.enter_code();
+            that.is_syss="";
+            that.is_halts="";
+            that.is_groups="";
+          },
+          //筛选条件--是否集团码
+          screen() {
+            let that = this
+            that.$axios({
+              url: that.url + "/v1/system/settings/get_code_base_list/?parent_code=mission",
+              method: "get",
+              params: {
+                is_group: that.is_groups ? 1 : 0,
+              },
+            })
+              .then(res => {
+                if (res.data.message === "success") {
+                  console.log(res.data.data)
+                  that. mission_list = res.data.data.results;
+                  that.total = res.data.data.count;
+                }
+                else {
+                  that.error_message(res.data.message)
+                }
+
+              })
+              .catch(error => {
+                console.log(error);
+              });
+
+          },
+          //筛选条件--是否系统码
+          screen_sys() {
+            let that = this
+            that.$axios({
+              url: that.url + "/v1/system/settings/get_code_base_list/?parent_code=mission",
+              method: "get",
+              params: {
+                is_sys: that.is_syss ? 1 : 0,
+              },
+            })
+              .then(res => {
+                if (res.data.message === "success") {
+                  that. mission_list = res.data.data.results;
+                  that.total = res.data.data.count;
+                }
+                else {
+                  that.error_message(res.data.message)
+                }
+
+              })
+              .catch(error => {
+                console.log(error);
+              });
+
+          },
+          //筛选条件--是否停用
+          screen_halt() {
+            let that = this
+            that.$axios({
+              url: that.url + "/v1/system/settings/get_code_base_list/?parent_code=mission",
+              method: "get",
+              params: {
+                is_halt: that.is_halts ? 1 : 0
+              },
+            })
+              .then(res => {
+                if (res.data.message === "success") {
+                  that. mission_list = res.data.data.results;
+                  that.total = res.data.data.count;
+                }
+                else {
+                  that.error_message(res.data.message)
+                }
+
+              })
+              .catch(error => {
+                console.log(error);
+              });
+
+          },
+          //点击分页上的页数
+          handleCurrentChange(curPage) {
+            let that = this
+            console.log(curPage) // 当前页}
+            //获取信息列表
+            that.$axios({
+              url: that.url + "/v1/system/settings/get_code_base_list/?parent_code=mission",
+              method: "get",
+              params: {
+                page_num: curPage,
+                page: that.pagesize
+              },
+
+            })
+              .then(res => {
+                if (res.data.message === "success") {
+                  console.log(res);
+                  that. mission_list = res.data.data.results;
+                }
+                else {
+                  // console.log(resp.data.message);
+                }
+              })
+              .catch(error => {
+                console.log(error);
+              });
+
+
+          },
+          //  点击删除
+          cancel(id, index, list) {
+            console.log(id);
+            console.log(index);
+            console.log(list);
+            let that = this;
+            that.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }).then(() => {
+              that.$message({
+                type: 'success',
+                message: '删除成功!'
+              });
+              list.splice(index, 1);
+              that.$axios({
+                url: that.url + "/v1/system/settings/remove_code_base/" + id + '/',
+                method: "post",
+              })
+                .then(res => {
+                  console.log(res)
+                  if (res.data.message === "success") {
+                    that.enter_code();
+                  }
+                })
+                .catch(error => {
+                  console.log(error);
+                })
+
+            }).catch(() => {
+              that.$message({
+                type: 'info',
+                message: '已取消删除'
+              });
+            });
+          },
+          //点击修改
+          amend(srow, id, index, list) {
+            let that = this;
+            that.Edite = true;
+            that.id = id;
+            console.log(srow);
+            that.title = "修改任务体系";
+            //  入账代码的内容
+            that.param.desc = srow.descript,//中文描述
+              that.param.desc_en = srow.descript_en,//英文描述
+              that.param.code = srow.code,//业务代码
+              that.param.code_category=srow.code_category,//业务名称
+              that.is_sys = srow.is_sys + "",//是否系统码
+              that.is_group = srow.is_group + "",//是否集团码
+              that.is_halt = srow.is_halt + ""//是否停用
+
+
+          },
+          /**新增任务体系*/
+          add_title() {
+            let that = this;
+            that.title = "新增任务体系";
+          },
+          //点击任务体系新增和修改后的保存
+          ensure() {
+            let that = this;
+            if (that.param.desc === "" || that.param.desc_en === "" || that.param.code === "" ||that.param.code_category==="") {
+              that.hintInfo("warning", "*为必填项")
+            } else {
+              let urldata = that.Edite ? (that.url + "/v1/system/settings/update_code_base/" + that.id + '/') : (that.url + "/v1/system/settings/add_code_base/");
+              console.info(urldata);
+              that.$axios({
+                url: urldata,
+                method: "post",
+                data: {
+                  //  入账代码的内容
+                  parent_code: 'mission',
+                  descript: that.param.desc,//中文描述
+                  descript_en: that.param.desc_en,//英文描述
+                  code_category: that.param.code_category,//地址
+                  code: that.param.code,//代码
+                  is_halt: parseInt(that.is_halt),//是否停用
+                  is_sys: parseInt(that.is_sys),//是否系统码
+                  is_group: parseInt(that.is_group),//是否集团码
+                },
+
+              })
+                .then(res => {
+                  if (res.data.message === "success") {
+                    that.enter_code();
+                    that.dialogVisible = false;
+                    if (that.Edite) {
+                      that.hintInfo("success", "修改任务体系成功")
+                    } else {
+                      that.hintInfo("success", "新增任务体系成功")
+                    }
+                  }
+                  else {
+                    that.error(res.data.message)
+                    console.log(res.data.message);
+                  }
+                })
+                .catch(error => {
+                  console.log(error);
+                });
+            }
+          },
+          //修改页面的显示和隐藏
+          handleClose(done) {
+            done();
+          },
+          /**
+           * @hintInfo 操作提示信息
+           * @param hint  成功提示
+           * @param info 警告信息
+           */
+          hintInfo: function (hint, info) {
+            let that = this;
+            if (hint === "success") {
+              that.$message({
+                message: info,
+                type: 'success'
+              });
+            } else if (hint === "warning") {
+              that.$message({
+                message: info,
+                type: 'warning'
+              });
+            } else {
+              this.$message.error('出错了！');
+            }
+          },
+
+        }
+    }
+</script>
+
+<style lang="less" scoped>
+  .mission {
+    width: 99%;
+    height: 95%;
+    margin-left: 10px;
+    background: white;
+    overflow: hidden;
+    .title {
+      margin-top: 23px;
+      min-width: 1200px;
+      li {
+        display: inline-block;
+        margin-left: 10px;
+        button {
+          width: 80px;
+          height: 30px;
+          background: rgba(68, 136, 233, 1);
+          border: none;
+          border-radius: 4px;
+          color: white;
+          margin-left: 20px;
+        }
+      }
+    }
+    .shopping {
+      /*margin-top: 20px;*/
+      .shopping_title {
+        li {
+          display: inline-block;
+          margin-left: 10px;
+        }
+      }
+    }
+    .dialog_style {
+      margin-left: 20px;
+      /*overflow: hidden;*/
+      li {
+        /*float: left;*/
+        /*width: 50%;*/
+        margin-bottom: 10px;
+        span {
+          display: inline-block;
+          width: 110px;
+        }
+      }
+    }
+  }
+</style>
